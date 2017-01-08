@@ -9,6 +9,7 @@ use Async::Chain;
 use HTTP::Easy;
 use HTTP::Easy::Cookies;
 use JSON::XS;
+use URI::Escape;
 
 my $JSON = JSON::XS->new->utf8;
 
@@ -21,31 +22,62 @@ use constant {
 
 =head1 NAME
 
-AnyEvent::VK - The great new AnyEvent::VK!
+AnyEvent::VK a thin wrapper for VK API using OAuth and https
 
 =head1 VERSION
 
-Version 0.01
+Version 0.02
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 
 =head1 SYNOPSIS
 
-Quick summary of what the module does.
+use utf8;
+use AnyEvent;
+use AnyEvent::VK;
 
-Perhaps a little code snippet.
+my $vk = AnyEvent::VK->new(
+	api_id    => 'Your API ID',
+	email     => 'Email/Mobile of user',
+	password  => 'User Password',
+	scope     => 'Application permissions',
+);
 
-	use AnyEvent::VK;
+# scope is Optional; default scope is 'friends,photos,audio,video,wall,groups,messages,offline'
+# for more information: https://vk.com/dev/permissions
 
-	my $foo = AnyEvent::VK->new();
-	...
+# Get access_token:
+my $cv = AE::cv; cv->begin;
+$vk->auth(sub {
+	my $success = shift;
+	if ($success) {
+		my ($token, $expires_in, $user_id) = @_;
+		# Do some staff
+	} else {
+		my ($stage, $headers, $body, $cookie) = @_;
+		# $stage could be:
+		# 1. oauth. Errors while get OAUTH page
+		# 2. login. Errors on user authentification
+		# 3. redirect. Errors on redirects. $cookie will be defined
+	}
+	$cv->end;
+});
 
-=head1 SUBROUTINES/METHODS
+# If you already have non-expired access_token:
+my $vk = AnyEvent::VK->new(
+	api_id    => 'Your API ID',
+	email     => 'Email/Mobile of user',
+	password  => 'User Password',
+	scope     => 'Application permissions',
 
-=head2 new
+	token     => 'Your access_token',
+	expires   => 'Token expires timestamp',
+	user_id   => 'user_id',
+);
+# Note! Method auth WILL NOT reauthentificate user if token is not expired
 
 =cut
 
@@ -61,13 +93,15 @@ sub new {
 	return bless { %args }, 'AnyEvent::VK';
 }
 
-=head2 auth
-
-=cut
 
 sub auth {
 	my $self = shift;
 	my $cb = pop;
+
+	if ($self->{token} and $self->{expires} > time() and $self->{user_id}) {
+		warn 'Token is nonexpired';
+		return $cb->(1, $self->{token}, $self->{expires}, $self->{user_id});
+	}
 
 	chain
 	oauth => sub {
@@ -142,6 +176,33 @@ sub auth {
 
 =head2 request
 
+use AnyEvent;
+use AnyEvent::VK;
+
+# Request to API:
+my $cv = AE::cv; $cv->begin;
+$vk->request('users.get', {
+	user_ids => '1,2',
+	fields => 'bdate,sex,city,verified',
+}, sub {
+	my $response = shift;
+	if ($response) {
+		my $meta = shift;
+		# $response is HASH -- decoded JSON
+
+	} else {
+		my $meta = shift;
+		# JSON decode failed or response status not 200
+		# $meta = {
+		#     headers => ...,
+		#     body    => ...,
+		# };
+	}
+	$cv->end;
+});
+
+# For more information about methods goto: https://vk.com/dev/methods
+
 =cut
 
 sub request {
@@ -198,9 +259,9 @@ sub _redirect {
 					return $self->_redirect($href, HTTP::Easy::Cookies->decode($h->{'set-cookie'}), $cookie_string, $cb);
 				} else { # Seemed that we already catch access_token
 					$h->{URL} =~ m/#access_token=([^&]+)&expires_in=(\d+)&user_id=(\d+)/;
-					my ($token)   = $h->{URL} =~ m/access_token=([^&]+)/;
+					my ($token)      = $h->{URL} =~ m/access_token=([^&]+)/;
 					my ($expires_in) = $h->{URL} =~ m/expires_in=(\d+)/;
-					my ($user_id) = $h->{URL} =~ m/user_id=(\d+)/;
+					my ($user_id)    = $h->{URL} =~ m/user_id=(\d+)/;
 
 					if (defined $token) {
 						$self->{token} = $token;
@@ -221,7 +282,7 @@ sub _redirect {
 sub _hash2url {
 	my $self = shift;
 	my $h = shift;
-	return join '&', map { $_ . '=' . $h->{$_} } keys %$h;
+	return join '&', map { uri_escape($_) . '=' . uri_escape($h->{$_}) } keys %$h;
 }
 
 sub _merge_cookies {
@@ -254,86 +315,12 @@ Vladislav Grubov, C<< <vogrubov at mail.ru> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests to C<bug-anyevent-vk at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=AnyEvent-VK>.  I will be notified, and then you'll
-automatically be notified of progress on your bug as I make changes.
-
-
-
-
-=head1 SUPPORT
-
-You can find documentation for this module with the perldoc command.
-
-	perldoc AnyEvent::VK
-
-
-You can also look for information at:
-
-=over 4
-
-=item * RT: CPAN's request tracker (report bugs here)
-
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=AnyEvent-VK>
-
-=item * AnnoCPAN: Annotated CPAN documentation
-
-L<http://annocpan.org/dist/AnyEvent-VK>
-
-=item * CPAN Ratings
-
-L<http://cpanratings.perl.org/d/AnyEvent-VK>
-
-=item * Search CPAN
-
-L<http://search.cpan.org/dist/AnyEvent-VK/>
-
-=back
-
-
-=head1 ACKNOWLEDGEMENTS
-
+Please report any bugs or feature requests to C<< <vogrubov at mail.ru> >>
 
 =head1 LICENSE AND COPYRIGHT
 
 Copyright 2017 Vladislav Grubov.
-
-This program is free software; you can redistribute it and/or modify it
-under the terms of the the Artistic License (2.0). You may obtain a
-copy of the full license at:
-
-L<http://www.perlfoundation.org/artistic_license_2_0>
-
-Any use, modification, and distribution of the Standard or Modified
-Versions is governed by this Artistic License. By using, modifying or
-distributing the Package, you accept this license. Do not use, modify,
-or distribute the Package, if you do not accept this license.
-
-If your Modified Version has been derived from a Modified Version made
-by someone other than you, you are nevertheless required to ensure that
-your Modified Version complies with the requirements of this license.
-
-This license does not grant you the right to use any trademark, service
-mark, tradename, or logo of the Copyright Holder.
-
-This license includes the non-exclusive, worldwide, free-of-charge
-patent license to make, have made, use, offer to sell, sell, import and
-otherwise transfer the Package with respect to any patent claims
-licensable by the Copyright Holder that are necessarily infringed by the
-Package. If you institute patent litigation (including a cross-claim or
-counterclaim) against any party alleging that the Package constitutes
-direct or contributory patent infringement, then this Artistic License
-to you shall terminate on the date that such litigation is filed.
-
-Disclaimer of Warranty: THE PACKAGE IS PROVIDED BY THE COPYRIGHT HOLDER
-AND CONTRIBUTORS "AS IS' AND WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES.
-THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE, OR NON-INFRINGEMENT ARE DISCLAIMED TO THE EXTENT PERMITTED BY
-YOUR LOCAL LAW. UNLESS REQUIRED BY LAW, NO COPYRIGHT HOLDER OR
-CONTRIBUTOR WILL BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, OR
-CONSEQUENTIAL DAMAGES ARISING IN ANY WAY OUT OF THE USE OF THE PACKAGE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+This program is released under the following license: GPL
 
 =cut
 

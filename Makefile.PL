@@ -8,7 +8,7 @@ WriteMakefile(
     AUTHOR           => q{Vladislav Grubov <vogrubov@mail.ru>},
     VERSION_FROM     => 'lib/AnyEvent/VK.pm',
     ABSTRACT_FROM    => 'lib/AnyEvent/VK.pm',
-    LICENSE          => 'artistic_2',
+    LICENSE          => 'GPL',
     PL_FILES         => {},
     MIN_PERL_VERSION => 5.010,
     CONFIGURE_REQUIRES => {
@@ -20,6 +20,7 @@ WriteMakefile(
         'Async::Chain' => 0,
         'HTTP::Easy' => 0,
         'JSON::XS' => 0,
+        'URI::Escape' => 0,
     },
     PREREQ_PM => {
         #'ABC'              => 1.6,
