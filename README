@@ -1,85 +1,183 @@
-AnyEvent-VK
+NAME
+    AnyEvent::VK
 
-The README is used to introduce the module and provide instructions on
-how to install the module, any machine dependencies it may have (for
-example C compilers and installed libraries) and any other information
-that should be provided before the module is installed.
+SYNOPSIS
 
-A README file is required for CPAN modules since CPAN extracts the README
-file from a module distribution so that people browsing the archive
-can use it to get an idea of the module's uses. It is usually a good idea
-to provide version information here so that people can decide whether
-fixes for the module are worth downloading.
+    use utf8;
+    use AnyEvent;
+    use AnyEvent::VK;
+
+    my $vk = AnyEvent::VK->new(
+        api_id    => 'Your API ID',
+        email     => 'Email/Mobile of user',
+        password  => 'User Password',
+        scope     => 'Application permissions',
+    );
+
+    # Get access_token:
+    my $cv = AE::cv; cv->begin;
+    $vk->auth(sub {
+        my $success = shift;
+        if ($success) {
+            my ($token, $expires_in, $user_id) = @_;
+            # Do some staff
+        } else {
+            my ($stage, $headers, $body, $cookie) = @_;
+            # $stage could be:
+            # 1. oauth. Errors while get OAUTH page
+            # 2. login. Errors on user authentification
+            # 3. redirect. Errors on redirects. $cookie will be defined
+        }
+        $cv->end;
+    });
+
+    # If you already have non-expired access_token:
+    my $vk = AnyEvent::VK->new(
+        api_id    => 'Your API ID',
+        email     => 'Email/Mobile of user',
+        password  => 'User Password',
+        scope     => 'Application permissions',
+
+        token     => 'Your access_token',
+        expires   => 'Token expires timestamp',
+        user_id   => 'user_id',
+    );
+    # Note! Method `auth` WILL NOT reauthentificate user if token is not expired
 
 
-INSTALLATION
+DESCRIPTION
+    AnyEvent::VK is simple asynchronous wrapper for VK API (https://api.vk.com/)
+    fully based on AnyEvent::HTTP written in perl. All requests uses https.
 
-To install this module, run the following commands:
+EXPORT
+    Does not export anything
 
-	perl Makefile.PL
-	make
-	make test
-	make install
+SUBROUTINES/METHODS
+    new - Create AnyEvent::VK object
+        Arguments should be passed as key => value list. I.e:
 
-SUPPORT AND DOCUMENTATION
+        use utf8;
+        use AnyEvent;
+        use AnyEvent::VK;
 
-After installing, you can find documentation for this module with the
-perldoc command.
+        my $vk = AnyEvent::VK->new(
+            app_id    => 'Your APP ID',
+            email     => 'Email/Mobile of user',
+            password  => 'User Password',
+            scope     => 'Application permissions',
+        );
 
-    perldoc AnyEvent::VK
+        # or
 
-You can also look for information at:
+        # If you already have non-expired access_token:
+        my $vk = AnyEvent::VK->new(
+            app_id    => 'Your APP ID',
+            email     => 'Email/Mobile of user',
+            password  => 'User Password',
+            scope     => 'Application permissions',
 
-    RT, CPAN's request tracker (report bugs here)
-        http://rt.cpan.org/NoAuth/Bugs.html?Dist=AnyEvent-VK
+            token     => 'Your access_token',
+            expires   => 'Token expires in timestamp',
+            user_id   => 'user_id',
+        );
 
-    AnnoCPAN, Annotated CPAN documentation
-        http://annocpan.org/dist/AnyEvent-VK
+    app_id
+        Requred! Your Application ID
+        For more information: https://vk.com/dev/first_guide
 
-    CPAN Ratings
-        http://cpanratings.perl.org/d/AnyEvent-VK
+    email
+        Required! User email or login which used for user authentification
 
-    Search CPAN
-        http://search.cpan.org/dist/AnyEvent-VK/
+    password
+        Required! User password which also used for user authentification
+
+    scope
+        Optional. Application permissions.
+        Default is: 'friends,photos,audio,video,wall,groups,messages,offline'
+        For more information: https://vk.com/dev/permissions
+
+    token
+        Optional. Non-Expired Access_token for current user.
+        With this parameter you should send `expires` and `user_id`
+
+    expires
+        Optional. Timestamp when token becomes expired.
+
+    user_id
+        Optional. user_id of user who handles current access_token.
+
+
+    auth - Force AnyEvent::VK object to get access_token via Implicit Flow
+        More information about authorization steps here: https://vk.com/dev/implicit_flow_user
+
+        Example:
+        my $cv = AE::cv; cv->begin;
+        $vk->auth(sub {
+            my $success = shift;
+            if ($success) {
+                my ($token, $expires_in, $user_id) = @_;
+                # Do some staff
+            } else {
+                my ($stage, $headers, $body, $cookie) = @_;
+                # $stage could be:
+                # 1. oauth. Errors while get OAUTH page
+                # 2. login. Errors on user authentification
+                # 3. redirect. Errors on redirects. $cookie will be defined
+            }
+            $cv->end;
+        });
+
+    request - Make request to https://api.vk.com
+        More information about supported methods here: https://vk.com/dev/methods
+        Example of request:
+
+        # Request to API:
+        my $cv = AE::cv; $cv->begin;
+        $vk->request('users.get', {
+            user_ids => '1,2',
+            fields => 'bdate,sex,city,verified',
+        }, sub {
+            my $response = shift;
+            if ($response) {
+                my $meta = shift;
+                # $response is HASH -- decoded JSON
+
+            } else {
+                my $meta = shift;
+                # JSON decode failed or response status not 200
+                # $meta = {
+                #     headers => ...,
+                #     body    => ...,
+                # };
+            }
+            $cv->end;
+        });
+
+    $AnyEvent::VK::TIMEOUT - set timeout for requests to API
+        Default is 3 secs.
+
+
+RESOURCES
+    *   GitHub repository
+
+        <https://github.com/orchaton/AnyEvent-VK>
+
+
+ACKNOWLEDGEMENTS
+    * Thanks to Marc Lehman for AnyEvent::HTTP
+
+    * Thanks to Anton Reznikov for Async::Chain
+
+    * Thanks to Mons Anderson for HTTP::Easy
+
+AUTHOR
+    Vladislav Grubov, <vogrubov@mail.ru>
 
 
 LICENSE AND COPYRIGHT
 
-Copyright (C) 2017 Vladislav Grubov
+    Copyright (C) 2017 Vladislav Grubov
 
-This program is free software; you can redistribute it and/or modify it
-under the terms of the the Artistic License (2.0). You may obtain a
-copy of the full license at:
-
-L<http://www.perlfoundation.org/artistic_license_2_0>
-
-Any use, modification, and distribution of the Standard or Modified
-Versions is governed by this Artistic License. By using, modifying or
-distributing the Package, you accept this license. Do not use, modify,
-or distribute the Package, if you do not accept this license.
-
-If your Modified Version has been derived from a Modified Version made
-by someone other than you, you are nevertheless required to ensure that
-your Modified Version complies with the requirements of this license.
-
-This license does not grant you the right to use any trademark, service
-mark, tradename, or logo of the Copyright Holder.
-
-This license includes the non-exclusive, worldwide, free-of-charge
-patent license to make, have made, use, offer to sell, sell, import and
-otherwise transfer the Package with respect to any patent claims
-licensable by the Copyright Holder that are necessarily infringed by the
-Package. If you institute patent litigation (including a cross-claim or
-counterclaim) against any party alleging that the Package constitutes
-direct or contributory patent infringement, then this Artistic License
-to you shall terminate on the date that such litigation is filed.
-
-Disclaimer of Warranty: THE PACKAGE IS PROVIDED BY THE COPYRIGHT HOLDER
-AND CONTRIBUTORS "AS IS' AND WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES.
-THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE, OR NON-INFRINGEMENT ARE DISCLAIMED TO THE EXTENT PERMITTED BY
-YOUR LOCAL LAW. UNLESS REQUIRED BY LAW, NO COPYRIGHT HOLDER OR
-CONTRIBUTOR WILL BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, OR
-CONSEQUENTIAL DAMAGES ARISING IN ANY WAY OUT OF THE USE OF THE PACKAGE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+    This program is free software; you can redistribute it and/or modify it
+    under the terms of either: the GNU General Public License as published
+    by the Free Software Foundation; or the Artistic License.

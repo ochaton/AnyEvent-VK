@@ -40,7 +40,7 @@ use AnyEvent;
 use AnyEvent::VK;
 
 my $vk = AnyEvent::VK->new(
-	api_id    => 'Your API ID',
+	app_id    => 'Your APP ID',
 	email     => 'Email/Mobile of user',
 	password  => 'User Password',
 	scope     => 'Application permissions',
@@ -68,7 +68,7 @@ $vk->auth(sub {
 
 # If you already have non-expired access_token:
 my $vk = AnyEvent::VK->new(
-	api_id    => 'Your API ID',
+	app_id    => 'Your APP ID',
 	email     => 'Email/Mobile of user',
 	password  => 'User Password',
 	scope     => 'Application permissions',
@@ -81,10 +81,12 @@ my $vk = AnyEvent::VK->new(
 
 =cut
 
+our $TIMEOUT = 3;
+
 sub new {
 	my ($self, %args) = @_;
 
-	$args{api_id} or return undef;
+	$args{app_id} or return undef;
 	$args{email} or return undef;
 	$args{password} or return undef;
 
@@ -108,7 +110,7 @@ sub auth {
 		my $next = shift;
 		http_request
 			GET => OAUTH_URL . '?' . $self->_hash2url({
-				client_id       => $self->{api_id},
+				client_id       => $self->{app_id},
 				display         => 'page',
 				redirect_uri    => REDIRECT_URL,
 				scope           => $self->{scope},
@@ -189,7 +191,7 @@ $vk->request('users.get', {
 	if ($response) {
 		my $meta = shift;
 		# $response is HASH -- decoded JSON
-
+s
 	} else {
 		my $meta = shift;
 		# JSON decode failed or response status not 200
@@ -220,7 +222,7 @@ sub request {
 
 	http_request
 		GET => REQUEST_URL . "$method?" . $qparams,
-		timeout => 3,
+		timeout => $REQUEST_TIMEOUT,
 		sub {
 			my ($body, $hdr) = @_;
 
