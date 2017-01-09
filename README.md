@@ -116,8 +116,8 @@ Stage can be one of:
 * callback -- Required.
 
 ### Returns:
-1. If success => (DecodedJson, { headers => $hdr })
-2. If failure => (undef, { body => $body, headers => $hdr })
+1. If success => `(DecodedJson, { headers => $hdr })`
+2. If failure => `(undef, { body => $body, headers => $hdr })`
 
 
 

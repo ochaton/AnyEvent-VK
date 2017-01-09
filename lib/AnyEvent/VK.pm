@@ -81,7 +81,7 @@ my $vk = AnyEvent::VK->new(
 
 =cut
 
-our $TIMEOUT = 3;
+our $REQUEST_TIMEOUT = 3;
 
 sub new {
 	my ($self, %args) = @_;
