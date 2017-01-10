@@ -100,9 +100,13 @@ sub auth {
 	my $self = shift;
 	my $cb = pop;
 
-	if ($self->{token} and $self->{expires} > time() and $self->{user_id}) {
-		warn 'Token is nonexpired';
-		return $cb->(1, $self->{token}, $self->{expires}, $self->{user_id});
+	if ($self->{token} and defined $self->{expires} and $self->{user_id}) {
+		if ($self->{expires} == 0 or $self->{expires} > time()) {
+			warn 'Token is nonexpired';
+			return $cb->(1, $self->{token}, $self->{expires}, $self->{user_id});			
+		} else {
+			warn 'Token is expired';
+		}
 	}
 
 	chain
