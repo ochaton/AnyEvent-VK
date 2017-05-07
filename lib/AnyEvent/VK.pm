@@ -26,11 +26,11 @@ AnyEvent::VK a thin wrapper for VK API using OAuth and https
 
 =head1 VERSION
 
-Version 0.02
+Version 0.03
 
 =cut
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 
 =head1 SYNOPSIS
@@ -225,7 +225,8 @@ sub request {
 	my $qparams = $self->_hash2url($args);
 
 	http_request
-		GET => REQUEST_URL . "$method?" . $qparams,
+		POST => REQUEST_URL . "$method",
+		body => $qparams,
 		timeout => $REQUEST_TIMEOUT,
 		sub {
 			my ($body, $hdr) = @_;
@@ -240,6 +241,7 @@ sub request {
 			return $cb->($response, { headers => $hdr });
 		}
 	;
+	return ;
 }
 
 
